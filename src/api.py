@@ -57,9 +57,8 @@ class DocumentRequest(BaseModel):
 
 class ExtractionResponse(BaseModel):
     """Response model for extraction results"""
-    ml_results: Dict[str, Any]
+    extraction_results: Dict[str, Any]
     rag_context: list
-    enhanced_results: Dict[str, Any]
     success: bool
     message: str
 
@@ -109,9 +108,8 @@ async def extract(document: DocumentRequest):
         results = extractor.extract(doc_data)
         
         return ExtractionResponse(
-            ml_results=results['ml_results'],
-            rag_context=results['rag_context'],
-            enhanced_results=results['enhanced_results'],
+            extraction_results=results.get('llm_results', {}),
+            rag_context=results.get('rag_context', []),
             success=True,
             message="Extraction completed successfully"
         )
@@ -166,9 +164,8 @@ async def extract_from_file(file: UploadFile = File(...), use_llm: bool = True):
             results['llm_results'] = {}
         
         return ExtractionResponse(
-            ml_results=results.get('llm_results', results.get('ml_results', {})),
+            extraction_results=results.get('llm_results', results.get('ml_results', {})),
             rag_context=results.get('rag_context', []),
-            enhanced_results=results.get('enhanced_results', {}),
             success=results.get('success', True),
             message=results.get('message', 'Extraction completed successfully')
         )

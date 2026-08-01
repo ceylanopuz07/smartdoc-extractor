@@ -32,19 +32,24 @@ def test_document_upload(file_path):
     print("DOCUMENT EXTRACTION RESULTS")
     print("="*80)
     
-    # Display ML Results
-    print("\n📊 ML RESULTS")
+    # Display Extraction Results (LLM only)
+    print("\n📊 EXTRACTION RESULTS")
     print("-" * 40)
-    ml_results = result.get('ml_results', {})
-    for key, value in ml_results.items():
-        print(f"{key:30} : {value}")
-    
-    # Display Enhanced Results
-    print("\n🚀 RAG ENHANCED RESULTS")
-    print("-" * 40)
-    enhanced = result.get('enhanced_results', {})
-    for key, value in enhanced.items():
-        print(f"{key:30} : {value}")
+    extraction_results = result.get('extraction_results', {})
+    for key, value in extraction_results.items():
+        # Handle different value types for clean display
+        if isinstance(value, list):
+            if value:
+                print(f"{key:30} : {value}")
+            else:
+                print(f"{key:30} : []")
+        elif isinstance(value, dict):
+            if value:
+                print(f"{key:30} : {value}")
+            else:
+                print(f"{key:30} : {{}}")
+        else:
+            print(f"{key:30} : {value}")
     
     # Display RAG Context
     print("\n🔍 RAG CONTEXT (Similar Documents)")
@@ -62,14 +67,18 @@ def test_document_upload(file_path):
     print("\n📋 EXCEL-LIKE VIEW")
     print("-" * 40)
     
-    # Combine results into a table
+    # Build table from extraction results
     table_data = []
-    for key in ml_results.keys():
+    for key, value in extraction_results.items():
+        # Convert complex types to strings for CSV
+        if isinstance(value, (list, dict)):
+            value_str = str(value)
+        else:
+            value_str = str(value) if value is not None else 'N/A'
+        
         row = {
             'Field': key,
-            'ML_Result': ml_results.get(key, 'N/A'),
-            'RAG_Enhanced': enhanced.get(key, 'N/A'),
-            'RAG_Enhanced_2': enhanced.get(f"{key}_rag", 'N/A')
+            'Value': value_str
         }
         table_data.append(row)
     

@@ -273,9 +273,7 @@
                     <thead>
                         <tr>
                             <th>Field</th>
-                            <th>ML Result</th>
-                            <th>RAG Enhanced</th>
-                            <th>RAG Enhanced 2</th>
+                            <th>Value</th>
                         </tr>
                     </thead>
                     <tbody id="resultsBody">
@@ -385,20 +383,30 @@
         }
         
         function displayResults(data) {
-            const mlResults = data.ml_results || {};
-            const enhancedResults = data.enhanced_results || {};
+            const extractionResults = data.extraction_results || {};
             const ragData = data.rag_context || [];
             
             // Build table rows
-            const fields = Object.keys(mlResults);
-            resultsBody.innerHTML = fields.map(field => `
+            const fields = Object.keys(extractionResults);
+            resultsBody.innerHTML = fields.map(field => {
+                const value = extractionResults[field];
+                // Handle different value types for display
+                let displayValue;
+                if (Array.isArray(value)) {
+                    displayValue = value.length > 0 ? value.join(', ') : '[]';
+                } else if (typeof value === 'object' && value !== null) {
+                    displayValue = JSON.stringify(value);
+                } else {
+                    displayValue = value !== null && value !== undefined ? value : 'N/A';
+                }
+                
+                return `
                 <tr>
                     <td><strong>${field}</strong></td>
-                    <td>${mlResults[field] !== undefined ? mlResults[field] : 'N/A'}</td>
-                    <td>${enhancedResults[field] !== undefined ? enhancedResults[field] : 'N/A'}</td>
-                    <td>${enhancedResults[field + '_rag'] !== undefined ? enhancedResults[field + '_rag'] : 'N/A'}</td>
+                    <td>${displayValue}</td>
                 </tr>
-            `).join('');
+                `;
+            }).join('');
             
             // Display RAG context
             ragContext.innerHTML = ragData.map((item, index) => `
@@ -417,18 +425,23 @@
         downloadBtn.addEventListener('click', () => {
             if (!currentResults) return;
             
-            const mlResults = currentResults.ml_results || {};
-            const enhancedResults = currentResults.enhanced_results || {};
+            const extractionResults = currentResults.extraction_results || {};
             
-            const fields = Object.keys(mlResults);
+            const fields = Object.keys(extractionResults);
             const csvContent = [
-                ['Field', 'ML_Result', 'RAG_Enhanced', 'RAG_Enhanced_2'],
-                ...fields.map(field => [
-                    field,
-                    mlResults[field] !== undefined ? mlResults[field] : 'N/A',
-                    enhancedResults[field] !== undefined ? enhancedResults[field] : 'N/A',
-                    enhancedResults[field + '_rag'] !== undefined ? enhancedResults[field + '_rag'] : 'N/A'
-                ])
+                ['Field', 'Value'],
+                ...fields.map(field => {
+                    const value = extractionResults[field];
+                    let valueStr;
+                    if (Array.isArray(value)) {
+                        valueStr = value.join(', ');
+                    } else if (typeof value === 'object' && value !== null) {
+                        valueStr = JSON.stringify(value);
+                    } else {
+                        valueStr = value !== null && value !== undefined ? String(value) : 'N/A';
+                    }
+                    return [field, valueStr];
+                })
             ].map(row => row.join(',')).join('\n');
             
             const blob = new Blob([csvContent], { type: 'text/csv' });
