@@ -1,11 +1,12 @@
 Field,ML_Result,RAG_Enhanced,RAG_Enhanced_2
-menu_nm,0.0,0.0,N/A
-menu,0.0,0.0,N/A
-meta_split,0.0,0.0,test
-total_cashprice,0.0,0.0,N/A
-meta_version,0.0,0.0,2.0.0
-menu_price,0.0,0.0,N/A
-total_total_price,0.0,0.0,N/A
-sub_total_subtotal_price,0.0,0.0,N/A
-total_changeprice,0.0,0.0,N/A
-sub_total_tax_price,0.0,0.0,N/A
+document_type,chat_conversation,chat_conversation,N/A
+date,,,N/A
+amount,,,N/A
+names,[],[],N/A
+addresses,"['37 W\n\nEstagfirullah ya yabanci degiliz', '94\n\nCiktim simdi', '54\n\nTamam', '36\n\nTamam', 'v\n\n1 match', '37\n\nBen yemek yaparken evi topla\n\ndedim ne acelesi var deyip oturdu', '58 ll', '37 w\n\nEv daginik bu arada, kusura bakma', '37 W\n\nNerdesin', '29 y\n\nBiz suan college greendeyiz', '37 W\n\nBanyo falan temiz degil yerleri', '1 match', '04 w\nCok sagol']","['37 W\n\nEstagfirullah ya yabanci degiliz', '94\n\nCiktim simdi', '54\n\nTamam', '36\n\nTamam', 'v\n\n1 match', '37\n\nBen yemek yaparken evi topla\n\ndedim ne acelesi var deyip oturdu', '58 ll', '37 w\n\nEv daginik bu arada, kusura bakma', '37 W\n\nNerdesin', '29 y\n\nBiz suan college greendeyiz', '37 W\n\nBanyo falan temiz degil yerleri', '1 match', '04 w\nCok sagol']",N/A
+phone_numbers,[],[],N/A
+email_addresses,[],[],N/A
+reference_numbers,[],[],N/A
+total_amount,,,N/A
+items,"['Cancel\n\neaitiaw\n\nOlur mu hic 54:94', 'Ciktim simdi 54:54', 'Tamam 94:04', 'w\nCok sagol 94:04,', 'y\n\nVarol da geliyor haberin olsun tek\nyollamam dedi seni 21:36', 'Tamam 94:37', 'w\n\nEv daginik bu arada,', 'kusura bakma\n21:37', 'W\n\nBanyo falan temiz degil yerleri\n21:37', 'W\n\nEstagfirullah ya yabanci degiliz\n21:37']","['Cancel\n\neaitiaw\n\nOlur mu hic 54:94', 'Ciktim simdi 54:54', 'Tamam 94:04', 'w\nCok sagol 94:04,', 'y\n\nVarol da geliyor haberin olsun tek\nyollamam dedi seni 21:36', 'Tamam 94:37', 'w\n\nEv daginik bu arada,', 'kusura bakma\n21:37', 'W\n\nBanyo falan temiz degil yerleri\n21:37', 'W\n\nEstagfirullah ya yabanci degiliz\n21:37']",N/A
+other_fields,"{'participants': ['Nerdesin', 'Tamam'], 'messages': ['00:58 ll >\n\nQ. Tekme @ Cancel\n\neaitiaw\n\nOlur mu hic 54:94\n\nCiktim simdi 54:54\n\nTamam 94:04 w\nCok sagol 94:04, y\n\nVarol da geliyor haberin olsun tek\nyollamam dedi seni 21:36\n\nTamam 94:37 w\n\nEv daginik bu arada, kusura bakma', 'W\n\nBanyo falan temiz degil yerleri', 'W\n\nEstagfirullah ya yabanci degiliz', 'Ben yemek yaparken evi topla\n\ndedim ne acelesi var deyip oturdu', 'W\n\nNerdesin 51:29 y\n\nBiz suan college greendeyiz 5;:4, v\n\n1 match'], 'timestamps': ['94:04 ', '51:29 ', '54:54\n\n', '21:37 ', '94:04', '94:37 ', '54:94\n\n', '21:36\n\n', '21:37\n\n', '00:58 '], 'message_count': 12}","{'participants': ['Nerdesin', 'Tamam'], 'messages': ['00:58 ll >\n\nQ. Tekme @ Cancel\n\neaitiaw\n\nOlur mu hic 54:94\n\nCiktim simdi 54:54\n\nTamam 94:04 w\nCok sagol 94:04, y\n\nVarol da geliyor haberin olsun tek\nyollamam dedi seni 21:36\n\nTamam 94:37 w\n\nEv daginik bu arada, kusura bakma', 'W\n\nBanyo falan temiz degil yerleri', 'W\n\nEstagfirullah ya yabanci degiliz', 'Ben yemek yaparken evi topla\n\ndedim ne acelesi var deyip oturdu', 'W\n\nNerdesin 51:29 y\n\nBiz suan college greendeyiz 5;:4, v\n\n1 match'], 'timestamps': ['94:04 ', '51:29 ', '54:54\n\n', '21:37 ', '94:04', '94:37 ', '54:94\n\n', '21:36\n\n', '21:37\n\n', '00:58 '], 'message_count': 12}",N/A
