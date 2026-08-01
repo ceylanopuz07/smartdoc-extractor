@@ -1,6 +1,6 @@
-# RAG Document Extraction API
+# SmartDoc Extractor
 
-Production-ready RAG-enhanced document extraction system with FastAPI and Docker deployment.
+Production-ready SmartDoc Extractor with FastAPI and Docker deployment.
 
 ## Overview
 

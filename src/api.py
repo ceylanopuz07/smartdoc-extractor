@@ -16,8 +16,8 @@ from ocr_processor import OCRProcessor
 from llm_extractor import LLMExtractor
 
 app = FastAPI(
-    title="RAG Document Extraction API",
-    description="Production-ready RAG-enhanced document extraction system",
+    title="SmartDoc Extractor API",
+    description="Production-ready SmartDoc Extractor with RAG enhancement",
     version="1.0.0"
 )
 
@@ -66,7 +66,7 @@ class ExtractionResponse(BaseModel):
 async def root():
     """Root endpoint"""
     return {
-        "message": "RAG Document Extraction API",
+        "message": "SmartDoc Extractor API",
         "version": "1.0.0",
         "endpoints": {
             "/extract": "POST - Extract information from document metadata",
@@ -132,8 +132,11 @@ async def extract_from_file(file: UploadFile = File(...), use_llm: bool = True):
         file_bytes = await file.read()
         filename = file.filename
         
+        print(f"Processing file: {filename}, size: {len(file_bytes)} bytes")
+        
         # Extract text using OCR (handles both images and PDFs)
         text = ocr_processor.extract_text(file_bytes, filename)
+        print(f"Extracted text length: {len(text)} characters")
         
         # Choose extraction method
         if use_llm and llm_extractor:
@@ -144,7 +147,7 @@ async def extract_from_file(file: UploadFile = File(...), use_llm: bool = True):
                 'text_length': len(text),
                 'image_w_px': 0,
                 'image_h_px': 0,
-                'image_bytes_len': len(image_bytes),
+                'image_bytes_len': len(file_bytes),
                 'gt_token_count_cl100k': len(text.split())
             })
             
@@ -158,7 +161,7 @@ async def extract_from_file(file: UploadFile = File(...), use_llm: bool = True):
                 'text_length': len(text),
                 'image_w_px': 0,
                 'image_h_px': 0,
-                'image_bytes_len': len(image_bytes),
+                'image_bytes_len': len(file_bytes),
                 'gt_token_count_cl100k': len(text.split())
             }
             results = extractor.extract(doc_data)
@@ -171,6 +174,9 @@ async def extract_from_file(file: UploadFile = File(...), use_llm: bool = True):
             message=results.get('message', 'Extraction completed successfully')
         )
     except Exception as e:
+        import traceback
+        print(f"Error in extract_from_file: {str(e)}")
+        print(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"File extraction failed: {str(e)}")
 
 if __name__ == "__main__":

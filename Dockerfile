@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for RAG Document Extraction API
+# Multi-stage Dockerfile for SmartDoc Extractor
 
 # Stage 1: Build stage
 FROM python:3.12-slim as builder
