@@ -7,6 +7,10 @@ scikit-learn>=1.3.0
 transformers>=4.30.0
 torch>=2.0.0
 datasets>=2.14.0
+sentence-transformers>=2.2.0
+
+# RAG
+chromadb>=0.4.0
 
 # Text processing
 nltk>=3.8.0
@@ -17,9 +21,10 @@ regex>=2023.0.0
 pyarrow>=12.0.0
 python-dateutil>=2.8.0
 
-# Visualization (for exploration)
-matplotlib>=3.7.0
-seaborn>=0.12.0
+# API
+fastapi>=0.100.0
+uvicorn>=0.23.0
+pydantic>=2.0.0
 
 # Utilities
 tqdm>=4.65.0

@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# Data (will be mounted as volume)
+data/raw/
+data/processed/*.csv
+data/knowledge_base/*
+
+# Models (will be mounted as volume)
+models/ml_models/*.joblib
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+.md
+
+# Plans
+.windsurf/
+
+# Environment
+.env
+.env.local
