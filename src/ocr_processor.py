@@ -20,6 +20,14 @@ class OCRProcessor:
             print(f"Tesseract found at: {self.tesseract_path}")
         else:
             print("Warning: Tesseract not found. OCR may not work.")
+        
+        # Set poppler path for PDF processing
+        self.poppler_path = self._find_poppler()
+        if self.poppler_path:
+            os.environ['PATH'] = self.poppler_path + os.pathsep + os.environ.get('PATH', '')
+            print(f"Poppler found at: {self.poppler_path}")
+        else:
+            print("Warning: Poppler not found. PDF processing may not work.")
     
     def _find_tesseract(self):
         """Find Tesseract executable"""
@@ -29,6 +37,21 @@ class OCRProcessor:
             '/opt/homebrew/bin/tesseract',
             'C:\\Program Files\\Tesseract-OCR\\tesseract.exe',
             'C:\\Program Files (x86)\\Tesseract-OCR\\tesseract.exe'
+        ]
+        for path in common_paths:
+            if os.path.exists(path):
+                return path
+        return None
+    
+    def _find_poppler(self):
+        """Find Poppler executable directory"""
+        common_paths = [
+            '/opt/homebrew/bin',
+            '/usr/bin',
+            '/usr/local/bin',
+            '/opt/homebrew/Cellar/poppler/26.07.0/bin',
+            'C:\\Program Files\\poppler-0.68.0\\bin',
+            'C:\\Program Files (x86)\\poppler-0.68.0\\bin'
         ]
         for path in common_paths:
             if os.path.exists(path):
