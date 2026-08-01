@@ -57,8 +57,8 @@ class BaseMLExtractor:
                 labels_df[col] = le.fit_transform(labels_df[col].astype(str))
                 self.label_encoders[col] = le
             else:
-                # For numeric columns, fill NaN with 0
-                labels_df[col] = labels_df[col].fillna(0)
+                # For numeric columns, fill NaN with 0 and ensure it's numeric
+                labels_df[col] = pd.to_numeric(labels_df[col], errors='coerce').fillna(0)
         
         return labels_df
     
@@ -144,8 +144,12 @@ class BaseMLExtractor:
             y_pred = model.predict(X_test)
             accuracy = accuracy_score(y_test[target_col], y_pred)
             
-            # Cross-validation
-            cv_scores = cross_val_score(model, X_train, y_train[target_col], cv=5)
+            # Cross-validation (use fewer splits for small datasets)
+            cv_splits = min(3, len(X_train) // 2)
+            if cv_splits >= 2:
+                cv_scores = cross_val_score(model, X_train, y_train[target_col], cv=cv_splits)
+            else:
+                cv_scores = np.array([accuracy])
             
             results[target_col] = {
                 'accuracy': accuracy,
