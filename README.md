@@ -36,29 +36,55 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-3. **Install dependencies**
+3. **Install system dependencies**
+
+For OCR and PDF processing, you need to install:
+
+**macOS:**
+```bash
+# Install Tesseract OCR
+brew install tesseract
+
+# Install Poppler for PDF processing
+brew install poppler
+```
+
+**Ubuntu/Debian:**
+```bash
+# Install Tesseract OCR
+sudo apt-get install tesseract-ocr
+
+# Install Poppler for PDF processing
+sudo apt-get install poppler-utils
+```
+
+**Windows:**
+- Download and install Tesseract from: https://github.com/UB-Mannheim/tesseract/wiki
+- Download and install Poppler from: https://github.com/oschwartz10612/poppler-windows
+
+4. **Install Python dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-4. **Download and prepare data**
+5. **Download and prepare data**
 ```bash
 python src/download_dataset.py
 python src/explore_benchmark.py
 python src/preprocess_benchmark.py
 ```
 
-5. **Train ML models**
+6. **Train ML models**
 ```bash
 python src/train_benchmark_models.py
 ```
 
-6. **Build RAG knowledge base**
+7. **Build RAG knowledge base**
 ```bash
 python src/rag_knowledge_base.py
 ```
 
-7. **Start the API**
+8. **Start the API**
 ```bash
 python -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
 ```
