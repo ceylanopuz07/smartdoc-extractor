@@ -38,8 +38,8 @@ SmartDoc Extractor is an AI-powered document extraction system that uses LLM-bas
 
 1. **Clone the repository**
 ```bash
-git clone https://github.com/ceylanopuz07/rag-document-extraction.git
-cd rag-document-extraction
+git clone https://github.com/ceylanopuz07/smartdoc-extractor.git
+cd smartdoc-extractor
 ```
 
 2. **Create virtual environment**
