@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Document Extraction</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .upload-section {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            background: #f8f9ff;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-section:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+        
+        .upload-section.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: transform 0.2s ease;
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .upload-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .file-info {
+            margin-top: 15px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results-section {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .results-header h2 {
+            color: #333;
+            font-size: 24px;
+        }
+        
+        .download-btn {
+            background: #28a745;
+            color: white;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+        
+        .download-btn:hover {
+            background: #218838;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+            font-size: 14px;
+        }
+        
+        tr:hover {
+            background: #f8f9ff;
+        }
+        
+        .rag-context {
+            margin-top: 30px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .rag-context h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .rag-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .rag-item h4 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .rag-item p {
+            color: #666;
+            font-size: 13px;
+            margin: 4px 0;
+        }
+        
+        .error {
+            display: none;
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 RAG Document Extraction</h1>
+        <p class="subtitle">Upload your document and get AI-powered extraction results</p>
+        
+        <div class="upload-section" id="uploadSection">
+            <div style="font-size: 48px; margin-bottom: 15px;">📁</div>
+            <p style="color: #666; margin-bottom: 15px;">Drag and drop your document here or click to browse</p>
+            <p style="color: #999; font-size: 12px; margin-bottom: 15px;">Supports PNG, JPG, and other image formats</p>
+            <input type="file" id="fileInput" accept="image/*">
+            <button class="upload-btn" id="uploadBtn">Choose File</button>
+            <div class="file-info" id="fileInfo"></div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="loading-spinner"></div>
+            <p>Processing your document with OCR and RAG...</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="results-section" id="resultsSection">
+            <div class="results-header">
+                <h2>📊 Extraction Results</h2>
+                <button class="download-btn" id="downloadBtn">Download CSV</button>
+            </div>
+            
+            <div class="table-container">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>ML Result</th>
+                            <th>RAG Enhanced</th>
+                            <th>RAG Enhanced 2</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody">
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="rag-context">
+                <h3>🔍 RAG Context (Similar Documents)</h3>
+                <div id="ragContext">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000/extract-file';
+        let currentResults = null;
+        
+        const uploadSection = document.getElementById('uploadSection');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const fileInfo = document.getElementById('fileInfo');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const status = document.getElementById('status');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultsBody = document.getElementById('resultsBody');
+        const ragContext = document.getElementById('ragContext');
+        const downloadBtn = document.getElementById('downloadBtn');
+        
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        uploadSection.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadSection.classList.add('dragover');
+        });
+        
+        uploadSection.addEventListener('dragleave', () => {
+            uploadSection.classList.remove('dragover');
+        });
+        
+        uploadSection.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadSection.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+        
+        function handleFile(file) {
+            fileInfo.textContent = `Selected: ${file.name} (${formatFileSize(file.size)})`;
+            uploadDocument(file);
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+        
+        async function uploadDocument(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            status.style.display = 'none';
+            resultsSection.style.display = 'none';
+            uploadBtn.disabled = true;
+            
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                currentResults = await response.json();
+                displayResults(currentResults);
+                
+                status.className = 'status success';
+                status.textContent = currentResults.message;
+                status.style.display = 'block';
+                
+            } catch (err) {
+                error.textContent = `Error: ${err.message}`;
+                error.style.display = 'block';
+                status.className = 'status error';
+                status.textContent = 'Failed to process document';
+                status.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+                uploadBtn.disabled = false;
+            }
+        }
+        
+        function displayResults(data) {
+            const mlResults = data.ml_results || {};
+            const enhancedResults = data.enhanced_results || {};
+            const ragData = data.rag_context || [];
+            
+            // Build table rows
+            const fields = Object.keys(mlResults);
+            resultsBody.innerHTML = fields.map(field => `
+                <tr>
+                    <td><strong>${field}</strong></td>
+                    <td>${mlResults[field] !== undefined ? mlResults[field] : 'N/A'}</td>
+                    <td>${enhancedResults[field] !== undefined ? enhancedResults[field] : 'N/A'}</td>
+                    <td>${enhancedResults[field + '_rag'] !== undefined ? enhancedResults[field + '_rag'] : 'N/A'}</td>
+                </tr>
+            `).join('');
+            
+            // Display RAG context
+            ragContext.innerHTML = ragData.map((item, index) => `
+                <div class="rag-item">
+                    <h4>Document ${index + 1}</h4>
+                    <p><strong>Distance:</strong> ${item.distance ? item.distance.toFixed(4) : 'N/A'}</p>
+                    <p><strong>Source:</strong> ${item.metadata?.source_dataset || 'N/A'}</p>
+                    <p><strong>Type:</strong> ${item.metadata?.doc_type || 'N/A'}</p>
+                    <p><strong>Fields:</strong> ${item.labels ? Object.keys(item.labels).slice(0, 5).join(', ') : 'N/A'}</p>
+                </div>
+            `).join('');
+            
+            resultsSection.style.display = 'block';
+        }
+        
+        downloadBtn.addEventListener('click', () => {
+            if (!currentResults) return;
+            
+            const mlResults = currentResults.ml_results || {};
+            const enhancedResults = currentResults.enhanced_results || {};
+            
+            const fields = Object.keys(mlResults);
+            const csvContent = [
+                ['Field', 'ML_Result', 'RAG_Enhanced', 'RAG_Enhanced_2'],
+                ...fields.map(field => [
+                    field,
+                    mlResults[field] !== undefined ? mlResults[field] : 'N/A',
+                    enhancedResults[field] !== undefined ? enhancedResults[field] : 'N/A',
+                    enhancedResults[field + '_rag'] !== undefined ? enhancedResults[field + '_rag'] : 'N/A'
+                ])
+            ].map(row => row.join(',')).join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'extraction_results.csv';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>
