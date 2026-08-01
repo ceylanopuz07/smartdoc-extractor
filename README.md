@@ -4,25 +4,37 @@ Production-ready SmartDoc Extractor with FastAPI and Docker deployment.
 
 ## Overview
 
-This system combines machine learning predictions with retrieval-augmented generation (RAG) to extract structured information from documents. It uses:
-- **ChromaDB** for vector storage and similarity search
-- **Sentence Transformers** for document embeddings
-- **Random Forest** models for ML-based extraction
-- **FastAPI** for production REST API
-- **Docker** for easy deployment
+SmartDoc Extractor is an AI-powered document extraction system that uses LLM-based extraction with RAG enhancement. It supports:
+- **LLM-based Extraction**: Primary extraction using OpenAI GPT models
+- **RAG Enhancement**: Retrieval-augmented generation for improved accuracy
+- **OCR Processing**: Tesseract OCR for text extraction from images and PDFs
+- **Chat Detection**: Automatic detection and extraction from chat conversations
+- **PDF Support**: Direct text extraction and OCR fallback for PDFs
+- **FastAPI**: Production REST API
+- **Docker**: Easy deployment support
 
 ## Features
 
-- **RAG Knowledge Base**: Indexed 4,522 documents from diverse sources (invoices, receipts, forms)
-- **ML Extraction**: Trained Random Forest models on 10 extraction fields
-- **RAG Enhancement**: Retrieves similar documents to improve extraction accuracy
+- **LLM-based Extraction**: Primary extraction using OpenAI GPT-4o-mini
+- **RAG Enhancement**: ChromaDB retrieval for improved extraction accuracy
+- **OCR Processing**: Tesseract OCR for images and PDFs
+- **PDF Support**: Direct text extraction with OCR fallback
+- **Chat Detection**: Automatic detection of WhatsApp/chat conversations
+- **Multi-format Support**: PNG, JPG, PDF documents
 - **REST API**: FastAPI with automatic Swagger documentation
+- **Web Interface**: User-friendly drag-and-drop interface
 - **Production Ready**: Docker container with health checks
-- **Scalable**: Can handle multiple document types
 
 ## Installation
 
-### Local Development
+### Prerequisites
+
+- Python 3.12+
+- Tesseract OCR
+- Poppler (for PDF processing)
+- OpenAI API Key (for LLM extraction)
+
+### Quick Start
 
 1. **Clone the repository**
 ```bash
@@ -67,26 +79,41 @@ sudo apt-get install poppler-utils
 pip install -r requirements.txt
 ```
 
-5. **Download and prepare data**
+5. **Configure OpenAI API Key**
+```bash
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY
+```
+
+6. **Start the API**
+```bash
+python -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
+```
+
+7. **Open Web Interface**
+```bash
+open web_interface.html
+```
+
+### Optional: ML Models and RAG Knowledge Base
+
+If you want to use ML models and RAG knowledge base for enhanced extraction:
+
+1. **Download and prepare data**
 ```bash
 python src/download_dataset.py
 python src/explore_benchmark.py
 python src/preprocess_benchmark.py
 ```
 
-6. **Train ML models**
+2. **Train ML models**
 ```bash
 python src/train_benchmark_models.py
 ```
 
-7. **Build RAG knowledge base**
+3. **Build RAG knowledge base**
 ```bash
 python src/rag_knowledge_base.py
-```
-
-8. **Start the API**
-```bash
-python -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### Docker Deployment
@@ -116,54 +143,32 @@ docker-compose up -d
 - `GET /` - API information
 - `GET /health` - Health check
 - `GET /docs` - Swagger documentation
-- `POST /extract` - Extract information from document
+- `POST /extract-file` - Extract information from uploaded document file (PNG, JPG, PDF)
 
 ### Example Request
 
 ```bash
-curl -X POST http://localhost:8000/extract \
-  -H "Content-Type: application/json" \
-  -d '{
-    "doc_type": "receipt",
-    "image_w_px": 432,
-    "image_h_px": 648,
-    "image_bytes_len": 50000,
-    "gt_token_count_cl100k": 100
-  }'
+curl -X POST http://localhost:8000/extract-file \
+  -F "file=@document.pdf"
 ```
 
 ### Example Response
 
 ```json
 {
-  "ml_results": {
-    "menu_nm": 0.0,
-    "menu_price": 0.0,
-    "total_total_price": 0.0,
-    ...
+  "extraction_results": {
+    "document_type": "invoice",
+    "date": "2024-01-15",
+    "amount": "$30.00",
+    "names": ["ABC Company"],
+    "email_addresses": ["contact@abc.com"],
+    "phone_numbers": ["+1-555-123-4567"],
+    "reference_numbers": ["12345"],
+    "total_amount": "$30.00",
+    "items": ["Widget A - $10.00", "Widget B - $20.00"],
+    "other_fields": {}
   },
-  "rag_context": [
-    {
-      "labels": {
-        "menu_nm": "Kupon 3",
-        "menu_price": "28,636",
-        "total_total_price": "31,500",
-        ...
-      },
-      "distance": 0.062,
-      "metadata": {
-        "doc_type": "receipt",
-        "source_dataset": "cord_v2"
-      }
-    }
-  ],
-  "enhanced_results": {
-    "menu_nm": 0.0,
-    "menu_price": 0.0,
-    "total_total_price": 0.0,
-    "meta_split_rag": "test",
-    "meta_version_rag": "2.0.0"
-  },
+  "rag_context": [],
   "success": true,
   "message": "Extraction completed successfully"
 }
@@ -175,84 +180,89 @@ curl -X POST http://localhost:8000/extract \
 rag-document-extraction/
 ├── src/
 │   ├── api.py                  # FastAPI application
-│   ├── rag_knowledge_base.py   # ChromaDB knowledge base
-│   ├── rag_extractor.py        # RAG-enhanced extractor
+│   ├── llm_extractor.py        # LLM-based extraction
+│   ├── rag_extractor.py        # RAG-enhanced extractor (optional)
+│   ├── ocr_processor.py        # OCR processing for images and PDFs
 │   ├── config.py               # Configuration
-│   ├── preprocessing.py        # Text preprocessing
-│   ├── base_extractor.py       # ML extraction
-│   ├── download_dataset.py     # Dataset download
-│   ├── explore_benchmark.py    # Data exploration
-│   └── train_benchmark_models.py # ML training
+│   ├── preprocessing.py        # Text preprocessing (optional)
+│   ├── base_extractor.py       # ML extraction (optional)
+│   ├── download_dataset.py     # Dataset download (optional)
+│   ├── explore_benchmark.py    # Data exploration (optional)
+│   └── train_benchmark_models.py # ML training (optional)
 ├── data/
-│   ├── raw/                    # Raw dataset
-│   ├── processed/              # Processed data
-│   └── knowledge_base/         # ChromaDB storage
+│   ├── raw/                    # Raw dataset (optional)
+│   ├── processed/              # Processed data (optional)
+│   └── knowledge_base/         # ChromaDB storage (optional)
 ├── models/
-│   └── ml_models/              # Trained ML models
-├── notebooks/                  # Jupyter notebooks
+│   └── ml_models/              # Trained ML models (optional)
+├── web_interface.html         # User interface
 ├── Dockerfile                  # Docker configuration
 ├── requirements.txt           # Python dependencies
+├── .env.example               # Environment variables template
 └── README.md                  # This file
 ```
 
-## Dataset
+## Dataset (Optional)
 
-The system uses the **thoughtworks/document-processing-benchmark** dataset from Hugging Face:
+For enhanced extraction with RAG knowledge base, the system can use the **thoughtworks/document-processing-benchmark** dataset from Hugging Face:
 - **Size**: 4,522 documents
 - **Sources**: invoices, receipts, forms from 6 different datasets
 - **Diversity**: Multiple document types and layouts
 - **Fields**: 26 unique extraction fields
 
-## RAG Enhancement Process
+This dataset is optional. The system works with LLM-based extraction without it.
 
-1. **ML Extraction**: Random Forest models predict extraction fields
-2. **Query Generation**: ML results are converted to query text
-3. **Similarity Search**: ChromaDB retrieves top-k similar documents
-4. **Context Enhancement**: Retrieved document labels enhance predictions
-5. **Combined Output**: Returns ML-only and RAG-enhanced results
+## Extraction Process
+
+1. **OCR Processing**: Extract text from images and PDFs using Tesseract
+2. **Document Type Detection**: Automatically detect document type (invoice, receipt, chat, etc.)
+3. **LLM Extraction**: Use OpenAI GPT-4o-mini for structured extraction
+4. **RAG Enhancement** (optional): Retrieve similar documents for improved accuracy
+5. **Fallback Extraction**: Rule-based extraction when LLM is unavailable
 
 ## Performance
 
-- **ML Models**: Trained on 4,522 documents
-- **RAG Retrieval**: Sub-second similarity search
-- **API Response**: < 1 second for typical requests
-- **Knowledge Base**: 4,522 indexed documents
+- **LLM Extraction**: High accuracy with GPT-4o-mini
+- **OCR Processing**: Fast text extraction from images and PDFs
+- **API Response**: < 2 seconds for typical documents
+- **Document Support**: PNG, JPG, PDF formats
+- **Chat Detection**: Automatic conversation extraction
 
 ## Development
 
-### Running Tests
-
-```bash
-pytest tests/
-```
-
 ### Adding New Document Types
 
-1. Add documents to the dataset
-2. Re-run preprocessing
-3. Retrain ML models
-4. Rebuild RAG knowledge base
+The LLM-based extraction automatically adapts to different document types. For better results with specific document types, you can:
+
+1. Add example documents to the RAG knowledge base
+2. Rebuild the RAG knowledge base with new documents
+3. The LLM will learn from the context provided by similar documents
 
 ### Customizing Extraction Fields
 
-Edit `src/config.py` to modify target fields and model parameters.
+Edit the prompt in `src/llm_extractor.py` to modify the extraction fields and prompts used by the LLM.
 
 ## Troubleshooting
 
 ### API not starting
 - Check if port 8000 is available
 - Verify all dependencies are installed
-- Ensure data and models directories exist
+- Ensure Tesseract and Poppler are installed
 
-### RAG retrieval not working
-- Verify ChromaDB knowledge base is built
-- Check if documents are indexed
-- Test with `python src/rag_knowledge_base.py`
+### OCR not working
+- Verify Tesseract is installed and in PATH
+- Check that image files are valid
+- For PDFs, ensure Poppler is installed
 
-### ML predictions are poor
-- Retrain models with more data
-- Check feature engineering in preprocessing
-- Verify training data quality
+### LLM extraction not working
+- Verify OPENAI_API_KEY is set in .env file
+- Check your OpenAI API credits
+- The system will fall back to rule-based extraction if LLM is unavailable
+
+### PDF upload failing
+- Ensure Poppler is installed and in PATH
+- Check that PDF files are not corrupted
+- Verify the API is running
 
 ## License
 
