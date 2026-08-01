@@ -121,7 +121,7 @@ async def extract_from_file(file: UploadFile = File(...), use_llm: bool = True):
     """
     Extract information from uploaded document file
     
-    - **file**: Document image file (PNG, JPG, PDF)
+    - **file**: Document file (PNG, JPG, PDF)
     - **use_llm**: Use LLM-based extraction (default: True)
     """
     if extractor is None or ocr_processor is None:
@@ -129,10 +129,11 @@ async def extract_from_file(file: UploadFile = File(...), use_llm: bool = True):
     
     try:
         # Read file
-        image_bytes = await file.read()
+        file_bytes = await file.read()
+        filename = file.filename
         
-        # Extract text using OCR
-        text = ocr_processor.extract_text_from_image(image_bytes)
+        # Extract text using OCR (handles both images and PDFs)
+        text = ocr_processor.extract_text(file_bytes, filename)
         
         # Choose extraction method
         if use_llm and llm_extractor:
