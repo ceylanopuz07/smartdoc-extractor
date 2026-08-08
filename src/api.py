@@ -11,7 +11,6 @@ import sys
 # Add src directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from rag_extractor import RAGEnhancedExtractor
 from ocr_processor import OCRProcessor
 from llm_extractor import LLMExtractor
 
@@ -30,17 +29,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global extractor instance
-extractor = None
+# Global instances
 ocr_processor = None
 llm_extractor = None
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize RAG extractor, OCR processor, and LLM extractor on startup"""
-    global extractor, ocr_processor, llm_extractor
-    print("Initializing RAG Enhanced Extractor...")
-    extractor = RAGEnhancedExtractor()
+    """Initialize OCR processor and LLM extractor on startup"""
+    global ocr_processor, llm_extractor
     print("Initializing OCR Processor...")
     ocr_processor = OCRProcessor()
     print("Initializing LLM Extractor...")
@@ -58,7 +54,6 @@ class DocumentRequest(BaseModel):
 class ExtractionResponse(BaseModel):
     """Response model for extraction results"""
     extraction_results: Dict[str, Any]
-    rag_context: list
     success: bool
     message: str
 
@@ -69,8 +64,7 @@ async def root():
         "message": "SmartDoc Extractor API",
         "version": "1.0.0",
         "endpoints": {
-            "/extract": "POST - Extract information from document metadata",
-            "/extract-file": "POST - Extract information from uploaded document file (supports LLM)",
+            "/extract-file": "POST - Extract information from uploaded document file (LLM-based)",
             "/health": "GET - Health check",
             "/docs": "GET - API documentation"
         }
@@ -81,50 +75,19 @@ async def health():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "extractor_initialized": extractor is not None,
         "ocr_initialized": ocr_processor is not None,
         "llm_initialized": llm_extractor is not None
     }
 
-@app.post("/extract", response_model=ExtractionResponse)
-async def extract(document: DocumentRequest):
-    """
-    Extract information from document using RAG-enhanced extraction
-    
-    - **doc_type**: Document type (invoice, receipt, form)
-    - **image_w_px**: Image width in pixels
-    - **image_h_px**: Image height in pixels
-    - **image_bytes_len**: Image size in bytes
-    - **gt_token_count_cl100k**: Token count for the document
-    """
-    if extractor is None:
-        raise HTTPException(status_code=503, detail="Extractor not initialized")
-    
-    try:
-        # Convert request to dict
-        doc_data = document.dict()
-        
-        # Run extraction
-        results = extractor.extract(doc_data)
-        
-        return ExtractionResponse(
-            extraction_results=results.get('llm_results', {}),
-            rag_context=results.get('rag_context', []),
-            success=True,
-            message="Extraction completed successfully"
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Extraction failed: {str(e)}")
 
 @app.post("/extract-file", response_model=ExtractionResponse)
-async def extract_from_file(file: UploadFile = File(...), use_llm: bool = True):
+async def extract_from_file(file: UploadFile = File(...)):
     """
-    Extract information from uploaded document file
+    Extract information from uploaded document file using LLM-based extraction
     
     - **file**: Document file (PNG, JPG, PDF)
-    - **use_llm**: Use LLM-based extraction (default: True)
     """
-    if extractor is None or ocr_processor is None:
+    if ocr_processor is None or llm_extractor is None:
         raise HTTPException(status_code=503, detail="Services not initialized")
     
     try:
@@ -138,38 +101,11 @@ async def extract_from_file(file: UploadFile = File(...), use_llm: bool = True):
         text = ocr_processor.extract_text(file_bytes, filename)
         print(f"Extracted text length: {len(text)} characters")
         
-        # Choose extraction method
-        if use_llm and llm_extractor:
-            # Use LLM extraction with RAG context
-            rag_results = extractor.extract({
-                'doc_type': 'unknown',
-                'extracted_text': text,
-                'text_length': len(text),
-                'image_w_px': 0,
-                'image_h_px': 0,
-                'image_bytes_len': len(file_bytes),
-                'gt_token_count_cl100k': len(text.split())
-            })
-            
-            # Use LLM with RAG context
-            results = llm_extractor.extract(text, rag_results.get('rag_context', []))
-        else:
-            # Use ML-based extraction
-            doc_data = {
-                'doc_type': 'unknown',
-                'extracted_text': text,
-                'text_length': len(text),
-                'image_w_px': 0,
-                'image_h_px': 0,
-                'image_bytes_len': len(file_bytes),
-                'gt_token_count_cl100k': len(text.split())
-            }
-            results = extractor.extract(doc_data)
-            results['llm_results'] = {}
+        # Use LLM extraction with fallback to rule-based extraction
+        results = llm_extractor.extract(text)
         
         return ExtractionResponse(
-            extraction_results=results.get('llm_results', results.get('ml_results', {})),
-            rag_context=results.get('rag_context', []),
+            extraction_results=results.get('llm_results', results.get('enhanced_results', {})),
             success=results.get('success', True),
             message=results.get('message', 'Extraction completed successfully')
         )
