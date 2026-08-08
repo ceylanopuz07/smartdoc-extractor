@@ -22,6 +22,12 @@ class LLMExtractor:
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
         self.model = "gpt-4o-mini"  # Cost-effective model for extraction
         
+        # Initialize document type-specific prompts
+        self.document_prompts = self._initialize_document_prompts()
+        
+        # Initialize few-shot examples
+        self.few_shot_examples = self._initialize_few_shot_examples()
+        
     def extract(self, text: str, rag_context: List[Dict] = None) -> Dict[str, Any]:
         """
         Extract structured information from document text
@@ -82,30 +88,305 @@ class LLMExtractor:
     
     def _create_extraction_prompt(self, text: str, context: str = "") -> str:
         """Create extraction prompt for GPT"""
+        # Detect document type first
+        doc_type = self._detect_document_type(text)
+        
+        # Get document type-specific prompt
+        type_specific_instructions = self._get_type_specific_instructions(doc_type)
+        
+        # Get few-shot examples
+        few_shot_examples = self._get_few_shot_examples(doc_type)
+        
         prompt = f"""
-Extract structured information from the following document text.
+You are an expert document extraction system specializing in extracting structured information from various document types with high accuracy.
 
-Document Text:
+{type_specific_instructions}
+
+{few_shot_examples}
+
+Document Text to Extract From:
 {text}
 
 {context}
 
-Extract the following fields if present in the document:
-- document_type: Type of document (invoice, receipt, contract, form, etc.)
-- date: Any dates mentioned
-- amount: Any monetary amounts
-- names: Any person or company names
-- addresses: Any addresses
-- phone_numbers: Any phone numbers
-- email_addresses: Any email addresses
-- reference_numbers: Any reference or ID numbers
-- total_amount: Total amount if applicable
-- items: List of items with quantities and prices if applicable
-- other_fields: Any other important information
+Extract the following fields with high precision:
+- document_type: Type of document (invoice, receipt, contract, form, chat_conversation, letter, report, certificate, statement, or unknown)
+- date: All dates mentioned in the document (return as array if multiple)
+- amount: All monetary amounts mentioned (return as array if multiple)
+- names: All person and company names mentioned (return as array)
+- addresses: All addresses mentioned (return as array)
+- phone_numbers: All phone numbers mentioned (return as array)
+- email_addresses: All email addresses mentioned (return as array)
+- reference_numbers: All reference numbers, invoice numbers, order IDs, or other identifiers (return as array)
+- total_amount: The total/sum amount if explicitly stated
+- items: For invoices/receipts, extract as array of objects with: name, quantity, unit_price, total_price
+- other_fields: Any other important key-value pairs or information not covered above (as object)
 
-Return the result as a JSON object with the extracted fields. If a field is not found, set it to null.
+IMPORTANT EXTRACTION RULES:
+1. Be precise and extract only what is explicitly stated in the document
+2. For dates, preserve the original format but standardize to YYYY-MM-DD when possible
+3. For amounts, include currency symbols and preserve decimal precision
+4. For names, distinguish between person names and company names
+5. For phone numbers, include country codes if present
+6. For items, extract all line items with their quantities and prices
+7. If a field is not found or cannot be confidently extracted, set it to null
+8. Return arrays for fields that can have multiple values (dates, amounts, names, etc.)
+
+Return the result as a JSON object with the extracted fields.
 """
         return prompt
+    
+    def _get_type_specific_instructions(self, doc_type: str) -> str:
+        """Get document type-specific extraction instructions"""
+        instructions = {
+            'invoice': '''
+INVOICE EXTRACTION INSTRUCTIONS:
+- Focus on extracting invoice number, invoice date, due date, vendor information, billing address, shipping address
+- Extract all line items with: item name/description, quantity, unit price, line total
+- Identify subtotal, tax amounts, discounts, and final total
+- Look for payment terms, payment method, and bank details
+- Extract any purchase order numbers referenced
+''',
+            'receipt': '''
+RECEIPT EXTRACTION INSTRUCTIONS:
+- Focus on extracting receipt number, transaction date, time, merchant name, location
+- Extract all purchased items with: item name, quantity, unit price, line total
+- Identify subtotal, tax amounts, tip/gratuity, and final total
+- Look for payment method (cash, card, etc.) and last 4 digits of card
+- Extract any loyalty program information or customer ID
+''',
+            'contract': '''
+CONTRACT EXTRACTION INSTRUCTIONS:
+- Focus on extracting contract title, contract number, effective date, expiration date
+- Extract all parties involved (names, roles, addresses)
+- Identify key terms: contract value, payment terms, deliverables, milestones
+- Look for signatures, signatories, and signing dates
+- Extract any amendment numbers or references
+''',
+            'form': '''
+FORM EXTRACTION INSTRUCTIONS:
+- Focus on extracting form title, form number, submission date
+- Extract all form fields with their labels and values
+- Identify submitter information (name, contact details, signature)
+- Look for any reference numbers, case numbers, or application IDs
+- Extract checkboxes or selection indicators
+''',
+            'chat_conversation': '''
+CHAT CONVERSATION EXTRACTION INSTRUCTIONS:
+- Focus on extracting all participants in the conversation
+- Extract messages with timestamps and senders
+- Identify key information shared: dates, amounts, names, locations
+- Look for any decisions, agreements, or action items
+- Extract any contact information or references mentioned
+''',
+            'letter': '''
+LETTER EXTRACTION INSTRUCTIONS:
+- Focus on extracting sender and recipient information (names, addresses)
+- Extract letter date and reference numbers
+- Identify subject line and key topics discussed
+- Look for any deadlines, dates, or action items mentioned
+- Extract signatures and signatories
+''',
+            'report': '''
+REPORT EXTRACTION INSTRUCTIONS:
+- Focus on extracting report title, report date, author/organization
+- Extract key metrics, figures, and statistics
+- Identify time periods covered in the report
+- Look for any conclusions, recommendations, or action items
+- Extract any reference numbers or report IDs
+''',
+            'certificate': '''
+CERTIFICATE EXTRACTION INSTRUCTIONS:
+- Focus on extracting certificate title, certificate number, issue date
+- Extract recipient name and issuing organization
+- Identify expiration date if applicable
+- Look for any grades, scores, or achievement levels
+- Extract signatures and authority information
+''',
+            'statement': '''
+STATEMENT EXTRACTION INSTRUCTIONS:
+- Focus on extracting statement period (start date, end date)
+- Extract account numbers and customer information
+- Identify opening balance, transactions, and closing balance
+- Look for payment due dates and minimum payment amounts
+- Extract any reference numbers or transaction IDs
+''',
+            'unknown': '''
+GENERAL DOCUMENT EXTRACTION INSTRUCTIONS:
+- Extract all identifiable information regardless of document type
+- Focus on names, dates, amounts, addresses, and contact information
+- Look for any reference numbers or identifiers
+- Extract any key-value pairs or structured data
+- Identify the document purpose and main topics
+'''
+        }
+        return instructions.get(doc_type, instructions['unknown'])
+    
+    def _get_few_shot_examples(self, doc_type: str) -> str:
+        """Get few-shot examples for the document type"""
+        examples = {
+            'invoice': '''
+EXAMPLE EXTRACTION - INVOICE:
+Input: "INVOICE #INV-2024-001
+Date: 2024-01-15
+Due Date: 2024-02-15
+From: TechCorp Inc.
+123 Business Ave, Suite 100
+San Francisco, CA 94105
+To: ABC Company
+456 Industry Blvd
+New York, NY 10001
+
+Item 1: Software License - 5 units @ $100.00 = $500.00
+Item 2: Support Services - 10 hours @ $50.00 = $500.00
+
+Subtotal: $1,000.00
+Tax (8%): $80.00
+Total: $1,080.00
+
+Payment Terms: Net 30
+Bank: Chase Bank, Account: ****1234"
+
+Output: {
+  "document_type": "invoice",
+  "date": ["2024-01-15", "2024-02-15"],
+  "amount": ["$500.00", "$500.00", "$1,000.00", "$80.00", "$1,080.00"],
+  "names": ["TechCorp Inc.", "ABC Company"],
+  "addresses": ["123 Business Ave, Suite 100, San Francisco, CA 94105", "456 Industry Blvd, New York, NY 10001"],
+  "phone_numbers": null,
+  "email_addresses": null,
+  "reference_numbers": ["INV-2024-001"],
+  "total_amount": "$1,080.00",
+  "items": [
+    {"name": "Software License", "quantity": 5, "unit_price": "$100.00", "total_price": "$500.00"},
+    {"name": "Support Services", "quantity": 10, "unit_price": "$50.00", "total_price": "$500.00"}
+  ],
+  "other_fields": {
+    "payment_terms": "Net 30",
+    "tax_rate": "8%",
+    "bank": "Chase Bank",
+    "account": "****1234"
+  }
+}
+''',
+            'receipt': '''
+EXAMPLE EXTRACTION - RECEIPT:
+Input: "RECEIPT #R-4567
+Date: 01/20/2024
+Time: 14:35
+Merchant: Coffee Shop
+123 Main Street
+Anytown, USA
+
+2x Latte - $4.50 each = $9.00
+1x Muffin - $3.50 = $3.50
+
+Subtotal: $12.50
+Tax: $1.00
+Tip: $2.50
+Total: $16.00
+
+Paid: Visa ****4321
+
+Thank you for your visit!
+Loyalty Member: LM12345"
+
+Output: {
+  "document_type": "receipt",
+  "date": ["01/20/2024"],
+  "amount": ["$9.00", "$3.50", "$12.50", "$1.00", "$2.50", "$16.00"],
+  "names": ["Coffee Shop"],
+  "addresses": ["123 Main Street, Anytown, USA"],
+  "phone_numbers": null,
+  "email_addresses": null,
+  "reference_numbers": ["R-4567"],
+  "total_amount": "$16.00",
+  "items": [
+    {"name": "Latte", "quantity": 2, "unit_price": "$4.50", "total_price": "$9.00"},
+    {"name": "Muffin", "quantity": 1, "unit_price": "$3.50", "total_price": "$3.50"}
+  ],
+  "other_fields": {
+    "time": "14:35",
+    "payment_method": "Visa",
+    "card_last_4": "4321",
+    "loyalty_member": "LM12345"
+  }
+}
+''',
+            'contract': '''
+EXAMPLE EXTRACTION - CONTRACT:
+Input: "SERVICE AGREEMENT
+Contract #: SA-2024-789
+Effective: January 1, 2024
+Expiration: December 31, 2024
+
+Between:
+Provider: XYZ Services LLC
+100 Provider Lane
+Chicago, IL 60601
+
+And:
+Client: Global Corp
+200 Client Road
+New York, NY 10002
+
+Services: Software Development
+Contract Value: $50,000
+Payment Terms: Monthly installments of $5,000
+Deliverables: 10 software modules
+
+Signed: John Smith (Provider)
+Signed: Jane Doe (Client)
+Date: December 15, 2023"
+
+Output: {
+  "document_type": "contract",
+  "date": ["January 1, 2024", "December 31, 2024", "December 15, 2023"],
+  "amount": ["$50,000", "$5,000"],
+  "names": ["XYZ Services LLC", "Global Corp", "John Smith", "Jane Doe"],
+  "addresses": ["100 Provider Lane, Chicago, IL 60601", "200 Client Road, New York, NY 10002"],
+  "phone_numbers": null,
+  "email_addresses": null,
+  "reference_numbers": ["SA-2024-789"],
+  "total_amount": "$50,000",
+  "items": null,
+  "other_fields": {
+    "services": "Software Development",
+    "payment_terms": "Monthly installments of $5,000",
+    "deliverables": "10 software modules",
+    "signatories": ["John Smith", "Jane Doe"]
+  }
+}
+''',
+            'chat_conversation': '''
+EXAMPLE EXTRACTION - CHAT CONVERSATION:
+Input: "10:30 AM - Alice: Hey, can we meet tomorrow?
+10:32 AM - Bob: Sure, what time works for you?
+10:33 AM - Alice: How about 2 PM at the coffee shop on Main St?
+10:35 AM - Bob: Perfect! I'll bring the documents.
+10:36 AM - Alice: Great, see you there. My number is 555-1234 if you need to reach me."
+
+Output: {
+  "document_type": "chat_conversation",
+  "date": null,
+  "amount": null,
+  "names": ["Alice", "Bob"],
+  "addresses": ["coffee shop on Main St"],
+  "phone_numbers": ["555-1234"],
+  "email_addresses": null,
+  "reference_numbers": null,
+  "total_amount": null,
+  "items": null,
+  "other_fields": {
+    "participants": ["Alice", "Bob"],
+    "meeting_time": "2 PM",
+    "meeting_location": "coffee shop on Main St",
+    "action_items": ["Bob to bring documents"]
+  }
+}
+'''
+        }
+        return examples.get(doc_type, '')
     
     def _fallback_extraction(self, text: str) -> Dict[str, Any]:
         """Fallback extraction when LLM is not available"""
