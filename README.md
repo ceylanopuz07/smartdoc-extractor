@@ -4,9 +4,9 @@ Production-ready SmartDoc Extractor with FastAPI and Docker deployment.
 
 ## Overview
 
-SmartDoc Extractor is an AI-powered document extraction system that uses LLM-based extraction with RAG enhancement. It supports:
-- **LLM-based Extraction**: Primary extraction using OpenAI GPT models
-- **RAG Enhancement**: Retrieval-augmented generation for improved accuracy
+SmartDoc Extractor is an AI-powered document extraction system that uses pure LLM-based extraction with enhanced prompts and few-shot learning. It supports:
+- **LLM-based Extraction**: Primary extraction using OpenAI GPT-4o-mini with document type-specific prompts
+- **Few-shot Learning**: Example-based extraction for improved accuracy
 - **OCR Processing**: Tesseract OCR for text extraction from images and PDFs
 - **Chat Detection**: Automatic detection and extraction from chat conversations
 - **PDF Support**: Direct text extraction and OCR fallback for PDFs
@@ -15,8 +15,10 @@ SmartDoc Extractor is an AI-powered document extraction system that uses LLM-bas
 
 ## Features
 
-- **LLM-based Extraction**: Primary extraction using OpenAI GPT-4o-mini
-- **RAG Enhancement**: ChromaDB retrieval for improved extraction accuracy
+- **LLM-based Extraction**: Primary extraction using OpenAI GPT-4o-mini with document type-specific prompts
+- **Document Type Detection**: Automatic detection of invoices, receipts, contracts, forms, chat conversations, letters, reports, certificates, and statements
+- **Few-shot Examples**: Context-aware extraction with example-based learning
+- **Enhanced Prompts**: Specialized extraction instructions for each document type
 - **OCR Processing**: Tesseract OCR for images and PDFs
 - **PDF Support**: Direct text extraction with OCR fallback
 - **Chat Detection**: Automatic detection of WhatsApp/chat conversations
@@ -24,6 +26,7 @@ SmartDoc Extractor is an AI-powered document extraction system that uses LLM-bas
 - **REST API**: FastAPI with automatic Swagger documentation
 - **Web Interface**: User-friendly drag-and-drop interface
 - **Production Ready**: Docker container with health checks
+- **Fallback Extraction**: Rule-based extraction when LLM is unavailable
 
 ## Installation
 
@@ -95,26 +98,14 @@ python -m uvicorn src.api:app --reload --host 0.0.0.0 --port 8000
 open web_interface.html
 ```
 
-### Optional: ML Models and RAG Knowledge Base
+### Testing
 
-If you want to use ML models and RAG knowledge base for enhanced extraction:
-
-1. **Download and prepare data**
+Run the test suite to verify extraction functionality:
 ```bash
-python src/download_dataset.py
-python src/explore_benchmark.py
-python src/preprocess_benchmark.py
+python test_llm_extraction.py
 ```
 
-2. **Train ML models**
-```bash
-python src/train_benchmark_models.py
-```
-
-3. **Build RAG knowledge base**
-```bash
-python src/rag_knowledge_base.py
-```
+This will test extraction on sample documents (invoice, receipt, chat, contract).
 
 ### Docker Deployment
 
@@ -141,9 +132,9 @@ docker-compose up -d
 ### Endpoints
 
 - `GET /` - API information
-- `GET /health` - Health check
+- `GET /health` - Health check (OCR and LLM initialization status)
 - `GET /docs` - Swagger documentation
-- `POST /extract-file` - Extract information from uploaded document file (PNG, JPG, PDF)
+- `POST /extract-file` - Extract information from uploaded document file (PNG, JPG, PDF) using LLM-based extraction
 
 ### Example Request
 
@@ -158,17 +149,25 @@ curl -X POST http://localhost:8000/extract-file \
 {
   "extraction_results": {
     "document_type": "invoice",
-    "date": "2024-01-15",
-    "amount": "$30.00",
-    "names": ["ABC Company"],
-    "email_addresses": ["contact@abc.com"],
+    "date": ["2024-01-15", "2024-02-15"],
+    "amount": ["$500.00", "$500.00", "$1,000.00", "$80.00", "$1,080.00"],
+    "names": ["TechCorp Inc.", "ABC Company"],
+    "addresses": ["123 Business Ave, Suite 100, San Francisco, CA 94105", "456 Industry Blvd, New York, NY 10001"],
     "phone_numbers": ["+1-555-123-4567"],
-    "reference_numbers": ["12345"],
-    "total_amount": "$30.00",
-    "items": ["Widget A - $10.00", "Widget B - $20.00"],
-    "other_fields": {}
+    "email_addresses": ["billing@techcorp.com"],
+    "reference_numbers": ["INV-2024-001"],
+    "total_amount": "$1,080.00",
+    "items": [
+      {"name": "Software License", "quantity": 5, "unit_price": "$100.00", "total_price": "$500.00"},
+      {"name": "Support Services", "quantity": 10, "unit_price": "$50.00", "total_price": "$500.00"}
+    ],
+    "other_fields": {
+      "payment_terms": "Net 30",
+      "tax_rate": "8%",
+      "bank": "Chase Bank",
+      "account": "****1234"
+    }
   },
-  "rag_context": [],
   "success": true,
   "message": "Extraction completed successfully"
 }
@@ -180,67 +179,75 @@ curl -X POST http://localhost:8000/extract-file \
 rag-document-extraction/
 ├── src/
 │   ├── api.py                  # FastAPI application
-│   ├── llm_extractor.py        # LLM-based extraction
-│   ├── rag_extractor.py        # RAG-enhanced extractor (optional)
+│   ├── llm_extractor.py        # LLM-based extraction with enhanced prompts
 │   ├── ocr_processor.py        # OCR processing for images and PDFs
 │   ├── config.py               # Configuration
-│   ├── preprocessing.py        # Text preprocessing (optional)
-│   ├── base_extractor.py       # ML extraction (optional)
-│   ├── download_dataset.py     # Dataset download (optional)
-│   ├── explore_benchmark.py    # Data exploration (optional)
-│   └── train_benchmark_models.py # ML training (optional)
+│   ├── rag_extractor.py        # Legacy RAG-enhanced extractor (deprecated)
+│   ├── rag_knowledge_base.py   # Legacy RAG knowledge base (deprecated)
+│   ├── base_extractor.py       # Legacy ML extraction (deprecated)
+│   ├── preprocessing.py        # Legacy text preprocessing (deprecated)
+│   ├── download_dataset.py     # Legacy dataset download (deprecated)
+│   ├── explore_benchmark.py    # Legacy data exploration (deprecated)
+│   └── train_benchmark_models.py # Legacy ML training (deprecated)
 ├── data/
-│   ├── raw/                    # Raw dataset (optional)
-│   ├── processed/              # Processed data (optional)
-│   └── knowledge_base/         # ChromaDB storage (optional)
+│   ├── raw/                    # Raw dataset (legacy)
+│   ├── processed/              # Processed data (legacy)
+│   └── knowledge_base/         # ChromaDB storage (legacy)
 ├── models/
-│   └── ml_models/              # Trained ML models (optional)
+│   └── ml_models/              # Trained ML models (legacy)
 ├── web_interface.html         # User interface
+├── test_llm_extraction.py     # LLM extraction test suite
 ├── Dockerfile                  # Docker configuration
 ├── requirements.txt           # Python dependencies
 ├── .env.example               # Environment variables template
 └── README.md                  # This file
 ```
 
-## Dataset (Optional)
+## Architecture
 
-For enhanced extraction with RAG knowledge base, the system can use the **thoughtworks/document-processing-benchmark** dataset from Hugging Face:
-- **Size**: 4,522 documents
-- **Sources**: invoices, receipts, forms from 6 different datasets
-- **Diversity**: Multiple document types and layouts
-- **Fields**: 26 unique extraction fields
+SmartDoc Extractor uses a pure LLM-based architecture:
 
-This dataset is optional. The system works with LLM-based extraction without it.
+1. **OCR Processing**: Extract text from images and PDFs using Tesseract
+2. **Document Type Detection**: Automatically detect document type (invoice, receipt, chat, contract, form, letter, report, certificate, statement)
+3. **LLM Extraction**: Use OpenAI GPT-4o-mini with:
+   - Document type-specific prompts
+   - Few-shot examples for common patterns
+   - Enhanced extraction rules
+4. **Fallback Extraction**: Rule-based extraction when LLM is unavailable
+
+The system no longer uses ML models or RAG enhancement, relying entirely on LLM-based extraction with enhanced prompts for better accuracy and maintainability.
 
 ## Extraction Process
 
 1. **OCR Processing**: Extract text from images and PDFs using Tesseract
-2. **Document Type Detection**: Automatically detect document type (invoice, receipt, chat, etc.)
-3. **LLM Extraction**: Use OpenAI GPT-4o-mini for structured extraction
-4. **RAG Enhancement** (optional): Retrieve similar documents for improved accuracy
-5. **Fallback Extraction**: Rule-based extraction when LLM is unavailable
+2. **Document Type Detection**: Automatically detect document type (invoice, receipt, chat, contract, form, letter, report, certificate, statement)
+3. **LLM Extraction**: Use OpenAI GPT-4o-mini with document type-specific prompts and few-shot examples
+4. **Fallback Extraction**: Rule-based extraction when LLM is unavailable
 
 ## Performance
 
-- **LLM Extraction**: High accuracy with GPT-4o-mini
+- **LLM Extraction**: High accuracy with GPT-4o-mini and enhanced prompts
+- **Document Type Detection**: Automatic detection of 9 document types
 - **OCR Processing**: Fast text extraction from images and PDFs
 - **API Response**: < 2 seconds for typical documents
 - **Document Support**: PNG, JPG, PDF formats
 - **Chat Detection**: Automatic conversation extraction
+- **Fallback**: Graceful degradation to rule-based extraction
 
 ## Development
 
 ### Adding New Document Types
 
-The LLM-based extraction automatically adapts to different document types. For better results with specific document types, you can:
+To add support for a new document type:
 
-1. Add example documents to the RAG knowledge base
-2. Rebuild the RAG knowledge base with new documents
-3. The LLM will learn from the context provided by similar documents
+1. Add document type detection logic in `_detect_document_type()` in `src/llm_extractor.py`
+2. Add type-specific instructions in `_get_type_specific_instructions()`
+3. Add few-shot examples in `_get_few_shot_examples()` if desired
+4. Test with `python test_llm_extraction.py`
 
 ### Customizing Extraction Fields
 
-Edit the prompt in `src/llm_extractor.py` to modify the extraction fields and prompts used by the LLM.
+Edit the prompt in `_create_extraction_prompt()` in `src/llm_extractor.py` to modify the extraction fields and prompts used by the LLM.
 
 ## Troubleshooting
 

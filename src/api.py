@@ -16,8 +16,8 @@ from llm_extractor import LLMExtractor
 
 app = FastAPI(
     title="SmartDoc Extractor API",
-    description="Production-ready SmartDoc Extractor with RAG enhancement",
-    version="1.0.0"
+    description="Production-ready SmartDoc Extractor with LLM-based extraction using enhanced prompts and few-shot learning",
+    version="2.0.0"
 )
 
 # Add CORS middleware
