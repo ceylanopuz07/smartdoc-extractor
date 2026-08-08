@@ -22,12 +22,6 @@ class LLMExtractor:
         self.client = OpenAI(api_key=self.api_key) if self.api_key else None
         self.model = "gpt-4o-mini"  # Cost-effective model for extraction
         
-        # Initialize document type-specific prompts
-        self.document_prompts = self._initialize_document_prompts()
-        
-        # Initialize few-shot examples
-        self.few_shot_examples = self._initialize_few_shot_examples()
-        
     def extract(self, text: str, rag_context: List[Dict] = None) -> Dict[str, Any]:
         """
         Extract structured information from document text
