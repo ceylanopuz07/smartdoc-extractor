@@ -104,7 +104,7 @@ Document Text to Extract From:
 {context}
 
 Extract the following fields with high precision:
-- document_type: Type of document (invoice, receipt, contract, form, chat_conversation, letter, report, certificate, statement, or unknown)
+- document_type: Type of document (insurance_claim, invoice, receipt, contract, form, chat_conversation, letter, report, certificate, statement, or unknown)
 - date: All dates mentioned in the document (return as array if multiple)
 - amount: All monetary amounts mentioned (return as array if multiple)
 - names: All person and company names mentioned (return as array)
@@ -204,6 +204,18 @@ STATEMENT EXTRACTION INSTRUCTIONS:
 - Identify opening balance, transactions, and closing balance
 - Look for payment due dates and minimum payment amounts
 - Extract any reference numbers or transaction IDs
+''',
+            'insurance_claim': '''
+INSURANCE CLAIM EXTRACTION INSTRUCTIONS:
+- Focus on extracting claim-specific fields: claim number, risk reference, transaction reference
+- Extract insured information: company name, address, contact details
+- Extract reinsured information: company name, address
+- Extract contract details: contract period, type, limits, date of loss, policy period
+- Extract loss information: loss name, location, claimant name, incident description
+- Extract financial data: incurred loss, paid loss, retention, expenses (with currency)
+- Extract all key-value pairs present in the document
+- Preserve the exact structure of financial figures
+- Extract contact information: phone numbers, email addresses
 ''',
             'unknown': '''
 GENERAL DOCUMENT EXTRACTION INSTRUCTIONS:
@@ -378,6 +390,66 @@ Output: {
     "action_items": ["Bob to bring documents"]
   }
 }
+''',
+            'insurance_claim': '''
+EXAMPLE EXTRACTION - INSURANCE CLAIM:
+Input: "CLAIM ADVICE
+Risk Reference: C2ZX000598002
+Claim Number: CA109114/2/7
+Transaction Ref.: 38631800
+Date: 15 November 2022
+
+Insured: Terra Nova Insurance Company Limited
+Address: c/o Markel International Ins Co Ltd, The Markel Building, 49 Leadenhall Street, London EC3A 2
+
+Reinsured: Northbridge General Insurance Corporation
+
+Contract Period: 01/01/1996 to 12/31/1996
+Type: General Liability
+Limits: 3,000,000 XS 4,000,000
+Date of Loss: 11/Sep/1999
+Loss Name: Gordon Whitehead
+Location: Ontario
+Claimant Name: Adam, Jack
+
+Incurred Loss: 3,144,655.87
+Paid Loss: 3,677,715.87
+Retention: 6,000,000.00
+Incurred Expenses: 75,675.04
+
+Contact: Rhonda Bass, Phone: 1 206 621 2431, Email: Rhonda.S.Bass@guycarp.com"
+
+Output: {
+  "document_type": "insurance_claim",
+  "date": ["15 November 2022", "01/01/1996", "12/31/1996", "11/Sep/1999"],
+  "amount": ["3,144,655.87", "3,677,715.87", "6,000,000.00", "75,675.04"],
+  "names": ["Terra Nova Insurance Company Limited", "Markel International Ins Co Ltd", "Northbridge General Insurance Corporation", "Gordon Whitehead", "Adam, Jack", "Rhonda Bass"],
+  "addresses": ["The Markel Building, 49 Leadenhall Street, London EC3A 2"],
+  "phone_numbers": ["1 206 621 2431"],
+  "email_addresses": ["Rhonda.S.Bass@guycarp.com"],
+  "reference_numbers": ["C2ZX000598002", "CA109114/2/7", "38631800"],
+  "total_amount": "3,144,655.87",
+  "items": null,
+  "other_fields": {
+    "risk_reference": "C2ZX000598002",
+    "claim_number": "CA109114/2/7",
+    "transaction_ref": "38631800",
+    "insured": "Terra Nova Insurance Company Limited",
+    "reinsured": "Northbridge General Insurance Corporation",
+    "contract_period": "01/01/1996 to 12/31/1996",
+    "type": "General Liability",
+    "limits": "3,000,000 XS 4,000,000",
+    "date_of_loss": "11/Sep/1999",
+    "loss_name": "Gordon Whitehead",
+    "location": "Ontario",
+    "claimant_name": "Adam, Jack",
+    "incurred_loss": "3,144,655.87",
+    "paid_loss": "3,677,715.87",
+    "retention": "6,000,000.00",
+    "incurred_expenses": "75,675.04",
+    "contact": "Rhonda Bass"
+  }
+}
 '''
         }
         return examples.get(doc_type, '')
@@ -413,11 +485,8 @@ Output: {
         """Detect document type from text"""
         text_lower = text.lower()
         
-        # Check for chat/conversation first
-        if self._is_chat_conversation(text):
-            return 'chat_conversation'
-        
         type_keywords = {
+            'insurance_claim': ['claim', 'insurance', 'reinsured', 'incurred loss', 'paid loss', 'retention', 'claim advice', 'loss due', 'policy period', 'date of loss'],
             'invoice': ['invoice', 'bill', 'rechnung', 'fatura'],
             'receipt': ['receipt', 'quittung', 'fiş', 'receipt'],
             'contract': ['contract', 'agreement', 'vertrag', 'sözleşme'],
@@ -428,9 +497,21 @@ Output: {
             'statement': ['statement', 'kontoauszug', 'ekstre']
         }
         
+        # Check for insurance claim first (highest priority for structured documents)
         for doc_type, keywords in type_keywords.items():
-            if any(keyword in text_lower for keyword in keywords):
-                return doc_type
+            if doc_type == 'insurance_claim':
+                if any(keyword in text_lower for keyword in keywords):
+                    return doc_type
+        
+        # Check for chat/conversation last (only if no other type matches)
+        if self._is_chat_conversation(text):
+            return 'chat_conversation'
+        
+        # Check other document types
+        for doc_type, keywords in type_keywords.items():
+            if doc_type != 'insurance_claim':
+                if any(keyword in text_lower for keyword in keywords):
+                    return doc_type
         
         return 'unknown'
     
@@ -631,13 +712,32 @@ Output: {
         if self._is_chat_conversation(text):
             other_fields.update(self._extract_chat_fields(text))
         else:
-            # Extract key-value pairs for regular documents
-            kv_pattern = r'([A-Za-z_][A-Za-z0-9_]*)\s*[:#]\s*([^\n]+)'
-            matches = re.findall(kv_pattern, text)
+            # Enhanced key-value pair extraction for structured documents
+            # More precise pattern to avoid noise
+            lines = text.split('\n')
             
-            for key, value in matches:
-                if len(key) > 2 and len(value) > 0:  # Filter out noise
-                    other_fields[key] = value.strip()
+            for line in lines:
+                line = line.strip()
+                if not line or len(line) < 3:
+                    continue
+                
+                # Pattern for "Key: Value" or "Key : Value"
+                if ':' in line:
+                    parts = line.split(':', 1)
+                    if len(parts) == 2:
+                        key = parts[0].strip()
+                        value = parts[1].strip()
+                        
+                        # Filter out noise - key should be meaningful
+                        if len(key) >= 2 and len(value) >= 1:
+                            # Skip if key is too generic
+                            skip_keys = ['the', 'and', 'or', 'to', 'for', 'with', 'by', 'of', 'in', 'on', 'at', 'from', 'this', 'that', 'a', 'an']
+                            if key.lower() not in skip_keys:
+                                # Clean up value
+                                value = re.sub(r'[.,;:]+$', '', value)
+                                # Only add if value is not just whitespace or numbers
+                                if value and not value.isspace():
+                                    other_fields[key] = value
         
         return other_fields
     
